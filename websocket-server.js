@@ -2,23 +2,22 @@ const WebSocket = require('ws');
 const http = require('http');
 const express = require('express');
 const mysql = require('mysql2');
+const path = require('path');
+const fs = require('fs');
 
 // Configuração
 const PORT = process.env.PORT || 8081;
 
-// Criar aplicação Express (para APIs REST)
+// Criar aplicação Express
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Criar servidor HTTP com Express
-const server = http.createServer(app);
+// Servir arquivos estáticos
+app.use(express.static(__dirname));
 
-// Configurar headers
-server.on('request', (req, res) => {
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-});
+// Criar servidor HTTP
+const server = http.createServer(app);
 
 // Configuração do banco de dados
 const dbConfig = {
@@ -70,90 +69,32 @@ function connectToDatabase() {
 // Função para criar tabelas
 function createTables() {
     const tables = [
-        // Tabela usuarios
+        // Tabela usuarios (simplificada)
         `CREATE TABLE IF NOT EXISTS usuarios (
             id VARCHAR(50) PRIMARY KEY,
             nome_usuario VARCHAR(50) NOT NULL,
-            nome_exibicao VARCHAR(50),
-            email VARCHAR(100),
-            telefone VARCHAR(15),
-            foto_perfil TEXT,
-            cor VARCHAR(10) DEFAULT '#128C7E',
-            status_mensagem VARCHAR(100) DEFAULT 'Olá! Estou usando o Chat WebSocket',
             esta_online BOOLEAN DEFAULT FALSE,
             ultima_vez_visto DATETIME NULL,
             endereco_ip VARCHAR(45),
-            agente_usuario TEXT,
-            contador_mensagens INT DEFAULT 0,
-            contador_conversas INT DEFAULT 0,
             criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            atualizado_em DATETIME NULL,
-            ultima_atividade DATETIME NULL,
-            INDEX idx_nome_usuario (nome_usuario),
-            INDEX idx_telefone (telefone),
-            INDEX idx_email (email),
-            INDEX idx_esta_online (esta_online),
-            INDEX idx_ultima_vez_visto (ultima_vez_visto),
-            UNIQUE KEY telefone_unico (telefone)
+            ultima_atividade DATETIME NULL
         )`,
         
-        // Tabela conversas
+        // Tabela conversas (simplificada)
         `CREATE TABLE IF NOT EXISTS conversas (
             id VARCHAR(50) PRIMARY KEY,
             nome VARCHAR(100) NOT NULL,
-            descricao TEXT,
-            tipo ENUM('privada', 'grupo', 'canal') DEFAULT 'privada',
-            esta_criptografada BOOLEAN DEFAULT FALSE,
-            maximo_participantes INT DEFAULT 256,
-            so_admins_podem_postar BOOLEAN DEFAULT FALSE,
-            so_admins_podem_mudar_config BOOLEAN DEFAULT FALSE,
-            cor_avatar VARCHAR(10) DEFAULT '#25D366',
-            emoji_avatar VARCHAR(5) DEFAULT '👥',
-            cor_fundo VARCHAR(10) DEFAULT '#f0f0f0',
-            criado_por VARCHAR(50),
-            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            ultima_mensagem_id VARCHAR(50) NULL,
-            ultima_mensagem_em DATETIME NULL,
-            preview_ultima_mensagem TEXT,
-            contador_mensagens INT DEFAULT 0,
-            contador_participantes INT DEFAULT 0,
-            INDEX idx_tipo (tipo),
-            INDEX idx_criado_por (criado_por),
-            INDEX idx_ultima_mensagem_em (ultima_mensagem_em)
+            tipo ENUM('privada', 'grupo') DEFAULT 'privada',
+            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`,
         
-        // Tabela mensagens
+        // Tabela mensagens (simplificada)
         `CREATE TABLE IF NOT EXISTS mensagens (
             id VARCHAR(50) PRIMARY KEY,
             conversa_id VARCHAR(50) NOT NULL,
             remetente_id VARCHAR(50) NOT NULL,
-            tipo_mensagem ENUM('texto', 'imagem', 'video', 'audio', 'arquivo', 'localizacao', 'contato', 'figurinha', 'sistema') DEFAULT 'texto',
             conteudo TEXT NOT NULL,
-            resposta_para_id VARCHAR(50) NULL,
-            encaminhada_de_id VARCHAR(50) NULL,
-            status ENUM('enviada', 'entregue', 'lida', 'falhou') DEFAULT 'enviada',
-            tentativas_entrega INT DEFAULT 1,
-            foi_editada BOOLEAN DEFAULT FALSE,
-            historico_edicao TEXT NULL,
-            foi_excluida BOOLEAN DEFAULT FALSE,
-            excluida_em DATETIME NULL,
-            excluida_por VARCHAR(50) NULL,
-            reacoes TEXT NULL,
-            contador_reacoes INT DEFAULT 0,
-            contador_visualizacoes INT DEFAULT 0,
-            visualizadores_ids TEXT NULL,
-            criada_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            atualizada_em DATETIME NULL,
-            entregue_em DATETIME NULL,
-            lida_em DATETIME NULL,
-            FOREIGN KEY (conversa_id) REFERENCES conversas(id) ON DELETE CASCADE,
-            FOREIGN KEY (remetente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-            FOREIGN KEY (resposta_para_id) REFERENCES mensagens(id) ON DELETE SET NULL,
-            INDEX idx_conversa_mensagens (conversa_id, criada_em),
-            INDEX idx_remetente_mensagens (remetente_id, criada_em),
-            INDEX idx_status_mensagem (status),
-            INDEX idx_criada_em (criada_em),
-            INDEX idx_tipo_mensagem (tipo_mensagem)
+            criada_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`
     ];
     
@@ -172,8 +113,30 @@ function createTables() {
 let clients = new Map();
 let userCount = 0;
 
-// Página de status do servidor
+// Verificar se o arquivo index.html existe
+const indexPath = path.join(__dirname, 'index.html');
+const indexHtmlExists = fs.existsSync(indexPath);
+
+// Rota principal - servir o sistema de chat (index.html)
 app.get('/', (req, res) => {
+    if (indexHtmlExists) {
+        console.log(`📄 Servindo arquivo: ${indexPath}`);
+        res.sendFile(indexPath);
+    } else {
+        // Se não existir index.html, mostrar página de status antiga
+        const clientList = Array.from(clients.values()).map(user => ({
+            id: user.id,
+            username: user.username,
+            ip: user.ip,
+            connectedAt: user.connectedAt
+        }));
+        
+        res.send(generateHtml(PORT, clientList));
+    }
+});
+
+// Rota para interface antiga (status)
+app.get('/status', (req, res) => {
     const clientList = Array.from(clients.values()).map(user => ({
         id: user.id,
         username: user.username,
@@ -333,7 +296,8 @@ function generateHtml(port, clients) {
         
         <div class="status info">
             📞 Endpoint WebSocket: <strong>ws://localhost:${port}</strong><br>
-            📍 Endpoint HTTP: <strong>http://localhost:${port}</strong>
+            📍 Endpoint HTTP: <strong>http://localhost:${port}</strong><br>
+            📱 Sistema de Chat: <strong><a href="/">Abrir Sistema de Chat</a></strong>
         </div>
         
         <h3>👥 Usuários Online (${clients.length}):</h3>
@@ -459,6 +423,7 @@ function generateHtml(port, clients) {
         // Iniciar conexão
         connectWebSocket();
         addLog('🚀 Página de status inicializada');
+        addLog('📱 <a href="/">Clique aqui para abrir o Sistema de Chat</a>');
     </script>
 </body>
 </html>`;
@@ -527,53 +492,53 @@ app.get('/api/messages/:conversationId', async (req, res) => {
                 });
             }
         );
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+} catch (error) {
+    res.status(500).json({ error: error.message });
+}
 });
 
 app.get('/api/stats', async (req, res) => {
-    if (!isDbConnected) {
-        return res.status(500).json({ error: 'Banco de dados não conectado' });
-    }
-    
-    try {
-        const stats = {};
-        
-        // Contar mensagens
-        db.query('SELECT COUNT(*) as count FROM mensagens', (error, results) => {
-            if (error) throw error;
-            stats.mensagens = results[0].count;
-            
-            // Contar usuários
-            db.query('SELECT COUNT(*) as count FROM usuarios', (error, results) => {
-                if (error) throw error;
-                stats.usuarios = results[0].count;
-                
-                // Contar conversas
-                db.query('SELECT COUNT(*) as count FROM conversas', (error, results) => {
-                    if (error) throw error;
-                    stats.conversas = results[0].count;
-                    
-                    res.json({
-                        status: 'success',
-                        stats: stats,
-                        timestamp: new Date().toISOString(),
-                        server_uptime: process.uptime(),
-                        clients_connected: clients.size
-                    });
-                });
-            });
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+if (!isDbConnected) {
+return res.status(500).json({ error: 'Banco de dados não conectado' });
+}
+
+try {
+const stats = {};
+
+// Contar mensagens
+db.query('SELECT COUNT(*) as count FROM mensagens', (error, results) => {
+if (error) throw error;
+stats.mensagens = results[0].count;
+
+// Contar usuários
+db.query('SELECT COUNT(*) as count FROM usuarios', (error, results) => {
+if (error) throw error;
+stats.usuarios = results[0].count;
+
+// Contar conversas
+db.query('SELECT COUNT(*) as count FROM conversas', (error, results) => {
+if (error) throw error;
+stats.conversas = results[0].count;
+
+res.json({
+status: 'success',
+stats: stats,
+timestamp: new Date().toISOString(),
+server_uptime: process.uptime(),
+clients_connected: clients.size
+});
+});
+});
+});
+} catch (error) {
+res.status(500).json({ error: error.message });
+}
 });
 
 // Criar servidor WebSocket
-const wss = new WebSocket.Server({ 
-    server,
-    clientTracking: true
+const wss = new WebSocket.Server({
+server,
+clientTracking: true
 });
 
 console.log(`
@@ -583,6 +548,8 @@ console.log(`
 ║ 🚀 Porta HTTP: ${PORT.toString().padEnd(35)} ║
 ║ 📍 URL HTTP: http://localhost:${PORT.toString().padEnd(30)} ║
 ║ 📡 URL WebSocket: ws://localhost:${PORT.toString().padEnd(27)} ║
+║ 📱 Sistema de Chat: http://localhost:${PORT.toString().padEnd(23)} ║
+║ 📊 Status: http://localhost:${PORT.toString().padEnd(28)}/status ║
 ║ 🗓️  Data: ${new Date().toLocaleDateString().padEnd(34)} ║
 ║ ⏰ Hora: ${new Date().toLocaleTimeString().padEnd(33)} ║
 ╚══════════════════════════════════════════════════════╝
@@ -592,483 +559,478 @@ console.log(`
 connectToDatabase();
 
 wss.on('connection', (ws, req) => {
-    userCount++;
-    const userId = `user_${Date.now()}_${userCount}`;
-    const userIp = req.socket.remoteAddress.replace('::ffff:', '');
-    
-    const timestamp = new Date().toLocaleTimeString();
-    console.log(`👤 [${timestamp}] Nova conexão: ${userId} (${userIp})`);
-    
-    // Configurar usuário
-    const user = {
-        id: userId,
-        ws: ws,
-        username: `Usuário_${userCount}`,
-        color: '#128C7E',
-        phone: '',
-        isOnline: true,
-        ip: userIp,
-        connectedAt: new Date(),
-        lastActivity: new Date()
-    };
-    
-    clients.set(userId, user);
-    
-    // Salvar usuário no banco
-    saveUserToDatabase(user);
-    
-    // Atualizar página de status
-    broadcastServerStats(`👤 Novo usuário conectado: ${user.username}`);
-    
-    // Enviar confirmação de conexão
-    sendToClient(ws, {
-        type: 'registered',
-        userId: userId,
-        message: '✅ Conexão estabelecida com o servidor!',
-        timestamp: new Date().toISOString(),
-        serverInfo: {
-            name: 'WhatsApp WebSocket Server',
-            version: '2.0.0',
-            clients: clients.size,
-            uptime: process.uptime()
-        }
-    });
-    
-    // Enviar lista de usuários online
-    broadcastUserList();
-    
-    // Notificar entrada do usuário (exceto para ele mesmo)
-    broadcastToAll({
-        type: 'user_joined',
-        userId: userId,
-        username: user.username,
-        color: user.color,
-        timestamp: new Date().toISOString(),
-        message: `${user.username} entrou no chat`
-    }, ws);
-    
-    // Manipular mensagens
-    ws.on('message', async (message) => {
-        try {
-            user.lastActivity = new Date();
-            const data = JSON.parse(message.toString());
-            
-            switch (data.type) {
-                case 'register':
-                    await handleRegister(user, data);
-                    break;
+userCount++;
+const userId = `user_${Date.now()}_${userCount}`;
+const userIp = req.socket.remoteAddress.replace('::ffff:', '');
+
+const timestamp = new Date().toLocaleTimeString();
+console.log(`👤 [${timestamp}] Nova conexão: ${userId} (${userIp})`);
+
+// Configurar usuário
+const user = {
+id: userId,
+ws: ws,
+username: `Usuário_${userCount}`,
+color: '#128C7E',
+phone: '',
+isOnline: true,
+ip: userIp,
+connectedAt: new Date(),
+lastActivity: new Date()
+};
+
+clients.set(userId, user);
+
+// Salvar usuário no banco
+saveUserToDatabase(user);
+
+// Atualizar página de status
+broadcastServerStats(`👤 Novo usuário conectado: ${user.username}`);
+
+// Enviar confirmação de conexão
+sendToClient(ws, {
+type: 'registered',
+userId: userId,
+message: '✅ Conexão estabelecida com o servidor!',
+timestamp: new Date().toISOString(),
+serverInfo: {
+name: 'WhatsApp WebSocket Server',
+version: '2.0.0',
+clients: clients.size,
+uptime: process.uptime()
+}
+});
+
+// Enviar lista de usuários online
+broadcastUserList();
+
+// Notificar entrada do usuário (exceto para ele mesmo)
+broadcastToAll({
+type: 'user_joined',
+userId: userId,
+username: user.username,
+color: user.color,
+timestamp: new Date().toISOString(),
+message: `${user.username} entrou no chat`
+}, ws);
+
+// Manipular mensagens
+ws.on('message', async (message) => {
+try {
+user.lastActivity = new Date();
+const data = JSON.parse(message.toString());
+
+switch (data.type) {
+case 'register':
+await handleRegister(user, data);
+break;
                     
-                case 'message':
-                    await handleMessage(user, data);
-                    break;
+case 'message':
+await handleMessage(user, data);
+break;
                     
-                case 'typing':
-                    handleTyping(user, data);
-                    break;
+case 'typing':
+handleTyping(user, data);
+break;
                     
-                case 'ping':
-                    handlePing(user);
-                    break;
+case 'ping':
+handlePing(user);
+break;
                     
-                default:
-                    console.log(`❓ [${timestamp}] ${user.username}: tipo desconhecido "${data.type}"`);
-            }
-        } catch (error) {
-            console.error(`❌ [${timestamp}] Erro ao processar mensagem:`, error.message);
-        }
-    });
-    
-    // Manipular desconexão
-    ws.on('close', (code, reason) => {
-        const timestamp = new Date().toLocaleTimeString();
-        console.log(`👋 [${timestamp}] ${user.username} desconectado (${code}: ${reason || 'Sem motivo'})`);
-        
-        // Atualizar usuário no banco
-        updateUserStatus(user.id, false);
-        
-        // Notificar saída do usuário
-        broadcastToAll({
-            type: 'user_left',
-            userId: userId,
-            username: user.username,
-            timestamp: new Date().toISOString(),
-            message: `${user.username} saiu do chat`
-        });
-        
-        // Remover da lista
-        clients.delete(userId);
-        
-        // Atualizar listas
-        broadcastUserList();
-        broadcastServerStats(`👋 ${user.username} desconectado`);
-    });
-    
-    // Manipular erros
-    ws.on('error', (error) => {
-        console.error(`💥 [${new Date().toLocaleTimeString()}] Erro no WebSocket:`, error.message);
-    });
+default:
+console.log(`❓ [${timestamp}] ${user.username}: tipo desconhecido "${data.type}"`);
+}
+} catch (error) {
+console.error(`❌ [${timestamp}] Erro ao processar mensagem:`, error.message);
+}
+});
+
+// Manipular desconexão
+ws.on('close', (code, reason) => {
+const timestamp = new Date().toLocaleTimeString();
+console.log(`👋 [${timestamp}] ${user.username} desconectado (${code}: ${reason || 'Sem motivo'})`);
+
+// Atualizar usuário no banco
+updateUserStatus(user.id, false);
+
+// Notificar saída do usuário
+broadcastToAll({
+type: 'user_left',
+userId: userId,
+username: user.username,
+timestamp: new Date().toISOString(),
+message: `${user.username} saiu do chat`
+});
+
+// Remover da lista
+clients.delete(userId);
+
+// Atualizar listas
+broadcastUserList();
+broadcastServerStats(`👋 ${user.username} desconectado`);
+});
+
+// Manipular erros
+ws.on('error', (error) => {
+console.error(`💥 [${new Date().toLocaleTimeString()}] Erro no WebSocket:`, error.message);
+});
 });
 
 // Funções do banco de dados
 async function saveUserToDatabase(user) {
-    if (!isDbConnected) return;
-    
-    const sql = `
-        INSERT INTO usuarios (id, nome_usuario, cor, telefone, esta_online, endereco_ip, criado_em, ultima_atividade)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-        nome_usuario = VALUES(nome_usuario),
-        cor = VALUES(cor),
-        esta_online = VALUES(esta_online),
-        endereco_ip = VALUES(endereco_ip),
-        ultima_atividade = VALUES(ultima_atividade)
-    `;
-    
-    const values = [
-        user.id,
-        user.username,
-        user.color,
-        user.phone,
-        true,
-        user.ip,
-        user.connectedAt,
-        user.lastActivity
-    ];
-    
-    db.query(sql, values, (error) => {
-        if (error) {
-            console.error('❌ Erro ao salvar usuário no banco:', error.message);
-        } else {
-            console.log(`✅ Usuário salvo no banco: ${user.username}`);
-        }
-    });
+if (!isDbConnected) return;
+
+const sql = `
+INSERT INTO usuarios (id, nome_usuario, esta_online, endereco_ip, criado_em, ultima_atividade)
+VALUES (?, ?, ?, ?, ?, ?)
+ON DUPLICATE KEY UPDATE
+nome_usuario = VALUES(nome_usuario),
+esta_online = VALUES(esta_online),
+endereco_ip = VALUES(endereco_ip),
+ultima_atividade = VALUES(ultima_atividade)
+`;
+
+const values = [
+user.id,
+user.username,
+true,
+user.ip,
+user.connectedAt,
+user.lastActivity
+];
+
+db.query(sql, values, (error) => {
+if (error) {
+console.error('❌ Erro ao salvar usuário no banco:', error.message);
+} else {
+console.log(`✅ Usuário salvo no banco: ${user.username}`);
+}
+});
 }
 
 async function updateUserStatus(userId, isOnline) {
-    if (!isDbConnected) return;
-    
-    const sql = `UPDATE usuarios SET esta_online = ?, ultima_atividade = ? WHERE id = ?`;
-    db.query(sql, [isOnline, new Date(), userId], (error) => {
-        if (error) {
-            console.error('❌ Erro ao atualizar status do usuário:', error.message);
-        } else {
-            console.log(`✅ Status atualizado para usuário: ${userId} (online: ${isOnline})`);
-        }
-    });
+if (!isDbConnected) return;
+
+const sql = `UPDATE usuarios SET esta_online = ?, ultima_atividade = ? WHERE id = ?`;
+db.query(sql, [isOnline, new Date(), userId], (error) => {
+if (error) {
+console.error('❌ Erro ao atualizar status do usuário:', error.message);
+} else {
+console.log(`✅ Status atualizado para usuário: ${userId} (online: ${isOnline})`);
+}
+});
 }
 
 async function saveMessageToDatabase(messageData) {
-    if (!isDbConnected) return null;
-    
-    return new Promise((resolve, reject) => {
-        const sql = `
-            INSERT INTO mensagens 
-            (id, conversa_id, remetente_id, conteudo, tipo_mensagem, status, criada_em)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `;
-        
-        const values = [
-            messageData.messageId,
-            messageData.conversationId || 'general',
-            messageData.senderId,
-            messageData.message,
-            messageData.messageType || 'texto',
-            'enviada',
-            new Date()
-        ];
-        
-        db.query(sql, values, (error, results) => {
-            if (error) {
-                console.error('❌ Erro ao salvar mensagem no banco:', error.message);
-                reject(error);
-            } else {
-                console.log(`💾 Mensagem salva no banco: ${messageData.messageId}`);
-                resolve(results.insertId);
-            }
-        });
-    });
+if (!isDbConnected) return null;
+
+return new Promise((resolve, reject) => {
+const sql = `
+INSERT INTO mensagens 
+(id, conversa_id, remetente_id, conteudo, criada_em)
+VALUES (?, ?, ?, ?, ?)
+`;
+
+const values = [
+messageData.messageId,
+messageData.conversationId || 'general',
+messageData.senderId,
+messageData.message,
+new Date()
+];
+
+db.query(sql, values, (error, results) => {
+if (error) {
+console.error('❌ Erro ao salvar mensagem no banco:', error.message);
+reject(error);
+} else {
+console.log(`💾 Mensagem salva no banco: ${messageData.messageId}`);
+resolve(results.insertId);
+}
+});
+});
 }
 
 // Funções de manipulação
 async function handleRegister(user, data) {
-    const oldName = user.username;
-    user.username = data.username || user.username;
-    user.color = data.color || user.color;
-    user.phone = data.phone || '';
-    
-    const timestamp = new Date().toLocaleTimeString();
-    console.log(`📝 [${timestamp}] ${oldName} → ${user.username} (registrado)`);
-    
-    // Atualizar usuário no banco
-    await saveUserToDatabase(user);
-    
-    // Confirmar registro
-    sendToClient(user.ws, {
-        type: 'registered',
-        userId: user.id,
-        username: user.username,
-        color: user.color,
-        phone: user.phone
-    });
-    
-    // Notificar mudança de nome
-    if (oldName !== user.username) {
-        broadcastToAll({
-            type: 'user_updated',
-            userId: user.id,
-            oldUsername: oldName,
-            newUsername: user.username,
-            timestamp: new Date().toISOString(),
-            message: `${oldName} agora é ${user.username}`
-        });
-    }
-    
-    // Atualizar listas
-    broadcastUserList();
-    broadcastServerStats(`📝 ${oldName} registrou-se como ${user.username}`);
+const oldName = user.username;
+user.username = data.username || user.username;
+user.color = data.color || user.color;
+user.phone = data.phone || '';
+
+const timestamp = new Date().toLocaleTimeString();
+console.log(`📝 [${timestamp}] ${oldName} → ${user.username} (registrado)`);
+
+// Atualizar usuário no banco
+await saveUserToDatabase(user);
+
+// Confirmar registro
+sendToClient(user.ws, {
+type: 'registered',
+userId: user.id,
+username: user.username,
+color: user.color,
+phone: user.phone
+});
+
+// Notificar mudança de nome
+if (oldName !== user.username) {
+broadcastToAll({
+type: 'user_updated',
+userId: user.id,
+oldUsername: oldName,
+newUsername: user.username,
+timestamp: new Date().toISOString(),
+message: `${oldName} agora é ${user.username}`
+});
+}
+
+// Atualizar listas
+broadcastUserList();
+broadcastServerStats(`📝 ${oldName} registrou-se como ${user.username}`);
 }
 
 async function handleMessage(user, data) {
-    const timestamp = new Date().toLocaleTimeString();
-    const messagePreview = data.message.length > 50 ? 
-        data.message.substring(0, 50) + '...' : data.message;
-    
-    console.log(`💬 [${timestamp}] ${user.username}: ${messagePreview}`);
-    
-    const messageId = data.messageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Salvar mensagem no banco de dados
-    let dbMessageId = null;
-    try {
-        dbMessageId = await saveMessageToDatabase({
-            messageId: messageId,
-            conversationId: data.conversationId || 'general',
-            senderId: user.id,
-            senderName: user.username,
-            message: data.message,
-            messageType: data.messageType || 'texto'
-        });
-    } catch (error) {
-        console.error('❌ Falha ao salvar mensagem no banco:', error.message);
-    }
-    
-    // Retransmitir mensagem para todos
-    const messageData = {
-        type: 'new_message',
-        conversationId: data.conversationId || 'general',
-        message: data.message,
-        senderId: user.id,
-        senderName: user.username,
-        senderColor: user.color,
-        timestamp: new Date().toISOString(),
-        messageId: messageId,
-        dbId: dbMessageId
-    };
-    
-    broadcastToAll(messageData, user.ws);
-    
-    // Confirmar entrega ao remetente
-    sendToClient(user.ws, {
-        type: 'message_delivered',
-        messageId: data.messageId || messageId,
-        dbId: dbMessageId,
-        timestamp: new Date().toISOString()
-    });
+const timestamp = new Date().toLocaleTimeString();
+const messagePreview = data.message.length > 50 ?
+data.message.substring(0, 50) + '...' : data.message;
+
+console.log(`💬 [${timestamp}] ${user.username}: ${messagePreview}`);
+
+const messageId = data.messageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+// Salvar mensagem no banco de dados
+let dbMessageId = null;
+try {
+dbMessageId = await saveMessageToDatabase({
+messageId: messageId,
+conversationId: data.conversationId || 'general',
+senderId: user.id,
+message: data.message
+});
+} catch (error) {
+console.error('❌ Falha ao salvar mensagem no banco:', error.message);
+}
+
+// Retransmitir mensagem para todos
+const messageData = {
+type: 'new_message',
+conversationId: data.conversationId || 'general',
+message: data.message,
+senderId: user.id,
+senderName: user.username,
+senderColor: user.color,
+timestamp: new Date().toISOString(),
+messageId: messageId,
+dbId: dbMessageId
+};
+
+broadcastToAll(messageData, user.ws);
+
+// Confirmar entrega ao remetente
+sendToClient(user.ws, {
+type: 'message_delivered',
+messageId: data.messageId || messageId,
+dbId: dbMessageId,
+timestamp: new Date().toISOString()
+});
 }
 
 function handleTyping(user, data) {
-    broadcastToAll({
-        type: 'typing',
-        conversationId: data.conversationId || 'general',
-        userId: user.id,
-        username: user.username,
-        isTyping: data.isTyping || false,
-        timestamp: new Date().toISOString()
-    }, user.ws);
+broadcastToAll({
+type: 'typing',
+conversationId: data.conversationId || 'general',
+userId: user.id,
+username: user.username,
+isTyping: data.isTyping || false,
+timestamp: new Date().toISOString()
+}, user.ws);
 }
 
 function handlePing(user) {
-    sendToClient(user.ws, {
-        type: 'pong',
-        timestamp: new Date().toISOString(),
-        serverTime: Date.now()
-    });
+sendToClient(user.ws, {
+type: 'pong',
+timestamp: new Date().toISOString(),
+serverTime: Date.now()
+});
 }
 
 // Funções auxiliares
 function sendToClient(ws, data) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        try {
-            ws.send(JSON.stringify(data));
-        } catch (error) {
-            console.error('❌ Erro ao enviar para cliente:', error.message);
-        }
-    }
+if (ws && ws.readyState === WebSocket.OPEN) {
+try {
+ws.send(JSON.stringify(data));
+} catch (error) {
+console.error('❌ Erro ao enviar para cliente:', error.message);
+}
+}
 }
 
 function broadcastToAll(data, excludeWs = null) {
-    const message = JSON.stringify(data);
-    let sentCount = 0;
-    
-    clients.forEach((client) => {
-        if (client.ws !== excludeWs && client.ws.readyState === WebSocket.OPEN) {
-            try {
-                client.ws.send(message);
-                sentCount++;
-            } catch (error) {
-                console.error(`❌ Erro ao enviar para ${client.username}:`, error.message);
-            }
-        }
-    });
-    
-    return sentCount;
+const message = JSON.stringify(data);
+let sentCount = 0;
+
+clients.forEach((client) => {
+if (client.ws !== excludeWs && client.ws.readyState === WebSocket.OPEN) {
+try {
+client.ws.send(message);
+sentCount++;
+} catch (error) {
+console.error(`❌ Erro ao enviar para ${client.username}:`, error.message);
+}
+}
+});
+
+return sentCount;
 }
 
 function broadcastUserList() {
-    const userList = Array.from(clients.values()).map(user => ({
-        id: user.id,
-        username: user.username,
-        color: user.color,
-        phone: user.phone,
-        isOnline: user.isOnline,
-        ip: user.ip,
-        connectedAt: user.connectedAt,
-        lastActivity: user.lastActivity
-    }));
-    
-    broadcastToAll({
-        type: 'userlist',
-        users: userList,
-        total: userList.length,
-        timestamp: new Date().toISOString()
-    });
+const userList = Array.from(clients.values()).map(user => ({
+id: user.id,
+username: user.username,
+color: user.color,
+phone: user.phone,
+isOnline: user.isOnline,
+ip: user.ip,
+connectedAt: user.connectedAt,
+lastActivity: user.lastActivity
+}));
+
+broadcastToAll({
+type: 'userlist',
+users: userList,
+total: userList.length,
+timestamp: new Date().toISOString()
+});
 }
 
 function broadcastServerStats(message = '') {
-    const clientList = Array.from(clients.values()).map(user => ({
-        id: user.id,
-        username: user.username,
-        ip: user.ip,
-        connectedAt: user.connectedAt
-    }));
-    
-    // Enviar para página de status (todos os clientes WebSocket)
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            try {
-                client.send(JSON.stringify({
-                    type: 'server_stats',
-                    clientsCount: clients.size,
-                    clients: clientList,
-                    dbStatus: isDbConnected,
-                    message: message,
-                    timestamp: new Date().toISOString(),
-                    serverUptime: process.uptime()
-                }));
-            } catch (error) {
-                // Ignora erros na página de status
-            }
-        }
-    });
+const clientList = Array.from(clients.values()).map(user => ({
+id: user.id,
+username: user.username,
+ip: user.ip,
+connectedAt: user.connectedAt
+}));
+
+// Enviar para página de status (todos os clientes WebSocket)
+wss.clients.forEach(client => {
+if (client.readyState === WebSocket.OPEN) {
+try {
+client.send(JSON.stringify({
+type: 'server_stats',
+clientsCount: clients.size,
+clients: clientList,
+dbStatus: isDbConnected,
+message: message,
+timestamp: new Date().toISOString(),
+serverUptime: process.uptime()
+}));
+} catch (error) {
+// Ignora erros na página de status
+}
+}
+});
 }
 
 // Iniciar servidor
 server.listen(PORT, () => {
-    console.log('📞 Aguardando conexões...\n');
-    console.log('📱 Para testar:');
-    console.log(`1. Abra http://localhost:${PORT} para ver status do servidor`);
-    console.log(`2. Abra http://localhost:${PORT}/api/db-test para testar banco`);
-    console.log(`3. Abra http://localhost:${PORT}/api/stats para estatísticas`);
-    console.log('4. Conecte-se via WebSocket para testar comunicação em tempo real');
-    console.log('5. Envie mensagens JSON com tipos: register, message, typing, ping');
-    console.log('\n🛑 Pressione Ctrl+C para parar o servidor\n');
+console.log('📞 Aguardando conexões...\n');
+console.log('🌐 URLs disponíveis:');
+console.log(`   1. Sistema de Chat: http://localhost:${PORT}`);
+console.log(`   2. Status do Servidor: http://localhost:${PORT}/status`);
+console.log(`   3. Testar Banco: http://localhost:${PORT}/api/db-test`);
+console.log(`   4. Estatísticas: http://localhost:${PORT}/api/stats`);
+console.log('\n📡 Protocolo WebSocket:');
+console.log('   • ws://localhost:' + PORT);
+console.log('   • Tipos de mensagem: register, message, typing, ping');
+console.log('\n🛑 Pressione Ctrl+C para parar o servidor\n');
 });
 
 // Monitorar inatividade
 setInterval(() => {
-    const now = new Date();
-    clients.forEach((user, userId) => {
-        const inactiveTime = (now - user.lastActivity) / 1000;
-        if (inactiveTime > 300) {
-            console.log(`⏰ [${now.toLocaleTimeString()}] Desconectando ${user.username} (inatividade: ${Math.floor(inactiveTime)}s)`);
-            user.ws.close(1000, 'Inatividade');
-        }
-    });
+const now = new Date();
+clients.forEach((user, userId) => {
+const inactiveTime = (now - user.lastActivity) / 1000;
+if (inactiveTime > 300) {
+console.log(`⏰ [${now.toLocaleTimeString()}] Desconectando ${user.username} (inatividade: ${Math.floor(inactiveTime)}s)`);
+user.ws.close(1000, 'Inatividade');
+}
+});
 }, 60000);
 
 // Heartbeat para manter conexões ativas
 setInterval(() => {
-    clients.forEach((user) => {
-        if (user.ws.readyState === WebSocket.OPEN) {
-            sendToClient(user.ws, {
-                type: 'heartbeat',
-                timestamp: Date.now()
-            });
-        }
-    });
+clients.forEach((user) => {
+if (user.ws.readyState === WebSocket.OPEN) {
+sendToClient(user.ws, {
+type: 'heartbeat',
+timestamp: Date.now()
+});
+}
+});
 }, 30000);
 
 // Atualizar status do banco periodicamente
 setInterval(() => {
-    if (db) {
-        db.query('SELECT 1', (error) => {
-            if (error) {
-                console.error('❌ Banco de dados offline:', error.message);
-                isDbConnected = false;
-            } else {
-                isDbConnected = true;
-            }
-        });
-    }
+if (db) {
+db.query('SELECT 1', (error) => {
+if (error) {
+console.error('❌ Banco de dados offline:', error.message);
+isDbConnected = false;
+} else {
+isDbConnected = true;
+}
+});
+}
 }, 10000);
 
 // Manipular encerramento gracioso
 process.on('SIGINT', () => {
-    console.log('\n\n🛑 Desligando servidor WebSocket...');
-    console.log(`📤 Desconectando ${clients.size} cliente(s)...`);
-    console.log(`🗄️  Fechando conexão com banco de dados...`);
-    
-    // Notificar todos os clientes
-    broadcastToAll({
-        type: 'server_shutdown',
-        message: 'Servidor está sendo desligado',
-        timestamp: new Date().toISOString()
-    });
-    
-    // Fechar todas as conexões
-    clients.forEach((client) => {
-        if (client.ws.readyState === WebSocket.OPEN) {
-            client.ws.close(1000, 'Servidor desligando');
-        }
-    });
-    
-    // Fechar pool do banco
-    if (db) {
-        db.end((error) => {
-            if (error) {
-                console.error('❌ Erro ao fechar banco:', error.message);
-            } else {
-                console.log('✅ Conexão com banco fechada');
-            }
-        });
-    }
-    
-    // Fechar servidores
-    setTimeout(() => {
-        wss.close(() => {
-            server.close(() => {
-                console.log('✅ Servidor desligado com sucesso');
-                process.exit(0);
-            });
-        });
-    }, 1000);
+console.log('\n\n🛑 Desligando servidor WebSocket...');
+console.log(`📤 Desconectando ${clients.size} cliente(s)...`);
+console.log(`🗄️  Fechando conexão com banco de dados...`);
+
+// Notificar todos os clientes
+broadcastToAll({
+type: 'server_shutdown',
+message: 'Servidor está sendo desligado',
+timestamp: new Date().toISOString()
+});
+
+// Fechar todas as conexões
+clients.forEach((client) => {
+if (client.ws.readyState === WebSocket.OPEN) {
+client.ws.close(1000, 'Servidor desligando');
+}
+});
+
+// Fechar pool do banco
+if (db) {
+db.end((error) => {
+if (error) {
+console.error('❌ Erro ao fechar banco:', error.message);
+} else {
+console.log('✅ Conexão com banco fechada');
+}
+});
+}
+
+// Fechar servidores
+setTimeout(() => {
+wss.close(() => {
+server.close(() => {
+console.log('✅ Servidor desligado com sucesso');
+process.exit(0);
+});
+});
+}, 1000);
 });
 
 // Log de erros não tratados
 process.on('uncaughtException', (error) => {
-    console.error('💥 Erro não tratado:', error);
+console.error('💥 Erro não tratado:', error);
 });
 
 process.on('unhandledRejection', (error) => {
-    console.error('💥 Promise rejeitada não tratada:', error);
+console.error('💥 Promise rejeitada não tratada:', error);
 });
