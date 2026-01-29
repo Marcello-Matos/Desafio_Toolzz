@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Chat - Grupo Geral</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: #0f3460;
+            padding: 15px 20px;
+            border-bottom: 2px solid #e94560;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e94560;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #4caf50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 300px;
+            background-color: rgba(15, 52, 96, 0.7);
+            border-right: 1px solid #1a5fb4;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .add-user-btn {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s;
+        }
+
+        .add-user-btn:hover {
+            background-color: #5fcf64;
+            transform: rotate(90deg);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .section {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #e94560;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .user-list {
+            list-style: none;
+        }
+
+        .user-item {
+            padding: 10px 12px;
+            margin-bottom: 5px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-item:hover {
+            background-color: rgba(233, 69, 96, 0.2);
+        }
+
+        .user-item.active {
+            background-color: rgba(233, 69, 96, 0.3);
+            border-left: 3px solid #e94560;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #1a5fb4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-status {
+            font-size: 12px;
+            color: #aaa;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .online-badge {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #4caf50;
+            flex-shrink: 0;
+        }
+
+        .offline-badge {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #666;
+            flex-shrink: 0;
+        }
+
+        .logs {
+            font-size: 12px;
+            font-family: monospace;
+            line-height: 1.5;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+        }
+
+        .log-time {
+            color: #e94560;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 15px 20px;
+            background-color: rgba(15, 52, 96, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header-info {
+            flex: 1;
+        }
+
+        .chat-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        .chat-subtitle {
+            color: #aaa;
+            font-size: 14px;
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-action-btn {
+            background: none;
+            border: 1px solid #1a5fb4;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .chat-action-btn:hover {
+            background-color: rgba(26, 95, 180, 0.3);
+        }
+
+        .messages-wrapper {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            padding: 0 20px;
+        }
+
+        .messages-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow-y: auto;
+            padding: 20px 0;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            max-width: 70%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.received {
+            align-self: flex-start;
+        }
+
+        .message.sent {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
+
+        .message-bubble {
+            padding: 12px 15px;
+            border-radius: 18px;
+            line-height: 1.4;
+            word-break: break-word;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.received .message-bubble {
+            background-color: #0f3460;
+            border-top-left-radius: 5px;
+        }
+
+        .message.sent .message-bubble {
+            background-color: #e94560;
+            border-top-right-radius: 5px;
+        }
+
+        .message.system .message-bubble {
+            background-color: rgba(26, 95, 180, 0.3);
+            color: #aaa;
+            font-style: italic;
+            align-self: center;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .message-info {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+            padding: 0 5px;
+        }
+
+        .input-footer {
+            padding: 15px 20px;
+            background-color: rgba(15, 52, 96, 0.3);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 15px;
+            border-radius: 24px;
+            border: 1px solid #1a5fb4;
+            background-color: rgba(15, 52, 96, 0.5);
+            color: white;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .message-input:focus {
+            border-color: #e94560;
+            box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.2);
+        }
+
+        .send-button {
+            padding: 12px 25px;
+            border-radius: 24px;
+            border: none;
+            background-color: #e94560;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 100px;
+        }
+
+        .send-button:hover {
+            background-color: #ff5773;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(233, 69, 96, 0.3);
+        }
+
+        .send-button:active {
+            transform: translateY(0);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-card {
+            background-color: rgba(15, 52, 96, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #e94560;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        .button {
+            padding: 8px 15px;
+            border-radius: 6px;
+            border: none;
+            background-color: #1a5fb4;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .button:hover {
+            background-color: #2a7fff;
+        }
+
+        .button.success {
+            background-color: #4caf50;
+        }
+
+        .button.success:hover {
+            background-color: #5fcf64;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .no-chat-selected {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 18px;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .no-chat-icon {
+            font-size: 72px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal {
+            background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+            border-radius: 12px;
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid #e94560;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            margin-bottom: 25px;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e94560;
+            margin-bottom: 10px;
+        }
+
+        .modal-subtitle {
+            color: #aaa;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: white;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid #1a5fb4;
+            background-color: rgba(15, 52, 96, 0.5);
+            color: white;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            border-color: #e94560;
+            box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.2);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid #1a5fb4;
+            background-color: rgba(15, 52, 96, 0.5);
+            color: white;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 20px;
+        }
+
+        .form-select:focus {
+            border-color: #e94560;
+            box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.2);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .modal-btn {
+            padding: 12px 25px;
+            border-radius: 8px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            min-width: 100px;
+        }
+
+        .modal-btn.primary {
+            background-color: #e94560;
+            color: white;
+        }
+
+        .modal-btn.primary:hover {
+            background-color: #ff5773;
+        }
+
+        .modal-btn.secondary {
+            background-color: transparent;
+            color: #aaa;
+            border: 1px solid #666;
+        }
+
+        .modal-btn.secondary:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .scrollbar-style::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scrollbar-style::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .scrollbar-style::-webkit-scrollbar-thumb {
+            background: rgba(233, 69, 96, 0.5);
+            border-radius: 10px;
+        }
+
+        .scrollbar-style::-webkit-scrollbar-thumb:hover {
+            background: rgba(233, 69, 96, 0.7);
+        }
+
+        .user-status-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .status-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .toggle-switch {
+            width: 40px;
+            height: 20px;
+            background-color: #666;
+            border-radius: 10px;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .toggle-switch.active {
+            background-color: #4caf50;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background-color: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            left: 22px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                max-height: 250px;
+            }
+            
+            .input-footer {
+                padding: 12px 15px;
+            }
+            
+            .send-button {
+                min-width: 80px;
+                padding: 12px 15px;
+            }
+            
+            .modal {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Modal para adicionar usuário -->
+    <div id="user-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Adicionar Novo Usuário</div>
+                <div class="modal-subtitle">Preencha os dados do novo usuário para adicioná-lo ao sistema</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="new-user-name">Nome do Usuário</label>
+                <input type="text" id="new-user-name" class="form-input" placeholder="Ex: João Silva" maxlength="50">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="new-user-id">ID do Usuário</label>
+                <input type="number" id="new-user-id" class="form-input" placeholder="Ex: 100" min="1" max="999">
+                <div style="font-size: 12px; color: #aaa; margin-top: 5px;">Deixe em branco para gerar automaticamente</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="new-user-status">Status Inicial</label>
+                <div class="user-status-control">
+                    <div class="status-toggle" id="status-toggle">
+                        <div class="toggle-switch active"></div>
+                        <span>Online</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="modal-btn secondary" id="cancel-user-btn">Cancelar</button>
+                <button class="modal-btn primary" id="save-user-btn">Adicionar Usuário</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="header">
+        <div class="logo">Chat System</div>
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span>Conectado • <span id="total-online">2</span> usuários online</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="section-title">Usuários do Sistema</div>
+                <button class="add-user-btn" id="add-user-btn" title="Adicionar usuário">+</button>
+            </div>
+            
+            <div class="sidebar-content scrollbar-style">
+                <div class="section">
+                    <div class="section-title">Grupo Geral</div>
+                    <ul class="user-list">
+                        <li class="user-item active" data-user="group">
+                            <div class="user-avatar">GG</div>
+                            <div class="user-info">
+                                <div class="user-name">Grupo Geral</div>
+                                <div class="user-status"><span class="online-badge"></span>Chat em grupo</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Usuários Online (<span id="online-count">2</span>)</div>
+                    <ul class="user-list" id="online-users">
+                        <!-- Usuários online serão inseridos aqui via JavaScript -->
+                    </ul>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Usuários Offline (<span id="offline-count">0</span>)</div>
+                    <ul class="user-list" id="offline-users">
+                        <!-- Usuários offline serão inseridos aqui via JavaScript -->
+                    </ul>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Status do Sistema</div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-users">2</div>
+                            <div class="stat-label">Total Usuários</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">✓</div>
+                            <div class="stat-label">Conexão</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <button class="button success" id="test-connection">Testar Conexão</button>
+                        <button class="button" id="view-stats">Estatísticas</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Logs do Sistema</div>
+                    <div class="logs scrollbar-style" id="system-logs">
+                        <!-- Logs serão inseridos aqui via JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div id="active-chat" class="chat-area">
+                <div class="chat-header">
+                    <div class="chat-header-info">
+                        <div class="chat-title" id="chat-with">Grupo Geral</div>
+                        <div class="chat-subtitle" id="chat-subtitle">Todos os usuários online podem ver estas mensagens</div>
+                    </div>
+                    <div class="chat-actions">
+                        <button class="chat-action-btn" id="chat-info-btn">Info</button>
+                        <button class="chat-action-btn" id="clear-chat-btn">Limpar</button>
+                    </div>
+                </div>
+
+                <div class="messages-wrapper">
+                    <div class="messages-container scrollbar-style" id="messages-container">
+                        <!-- Mensagens serão inseridas aqui via JavaScript -->
+                    </div>
+                </div>
+
+                <div class="input-footer">
+                    <div class="input-area">
+                        <input type="text" class="message-input" id="message-input" placeholder="Digite sua mensagem aqui...">
+                        <button class="send-button" id="send-button">Enviar</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="no-chat-selected" class="hidden">
+                <div class="no-chat-selected">
+                    <div class="no-chat-icon">💬</div>
+                    <div>Selecione um usuário ou grupo para iniciar uma conversa</div>
+                    <div style="margin-top: 20px; font-size: 14px; color: #888;">
+                        Clique em qualquer usuário na lista ou adicione um novo usuário
+                    </div>
+                    <button class="button success" style="margin-top: 20px;" id="add-first-user-btn">+ Adicionar Primeiro Usuário</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dados iniciais do sistema
+        let users = [
+            { id: 7, name: "Usuário_7", online: true, lastSeen: "08:49", isGroup: false },
+            { id: 24, name: "Usuário_24", online: true, lastSeen: "08:49", isGroup: false }
+        ];
+
+        const initialLogs = [
+            { time: "08:51:03", message: "Recebido: registered" },
+            { time: "08:51:03", message: "Registrado como Usuário" },
+            { time: "08:51:03", message: "Recebido: userlist" },
+            { time: "08:51:03", message: "Recebido: server_stats" },
+            { time: "08:51:19", message: "Recebido: heartbeat" },
+            { time: "08:51:40", message: "Recebido: heartbeat" }
+        ];
+
+        let messages = {
+            'group': [
+                { sender: "Sistema", text: "Olá, bom dia", time: "05:50", isSystem: true },
+                { sender: "Usuário_7", text: "Bom dia a todos! Como está o sistema hoje?", time: "08:50", isSystem: false },
+                { sender: "Você", text: "Tudo funcionando perfeitamente. Alguém testou a nova funcionalidade?", time: "08:52", isSystem: false },
+                { sender: "Usuário_24", text: "Ainda não testei, mas vou fazer isso hoje ainda.", time: "08:53", isSystem: false }
+            ],
+            '7': [
+                { sender: "Usuário_7", text: "Olá, você poderia me ajudar com uma configuração?", time: "08:30", isSystem: false },
+                { sender: "Você", text: "Claro! Do que você precisa?", time: "08:32", isSystem: false },
+                { sender: "Usuário_7", text: "Estou com problemas para acessar o relatório de estatísticas.", time: "08:33", isSystem: false }
+            ],
+            '24': [
+                { sender: "Usuário_24", text: "Bom dia! O relatório já está pronto?", time: "08:55", isSystem: false },
+                { sender: "Você", text: "Sim, acabei de finalizar. Vou enviar para você em alguns minutos.", time: "08:56", isSystem: false }
+            ]
+        };
+
+        // Estado atual do chat
+        let currentChat = 'group';
+        let logs = [...initialLogs];
+        let userStatusOnline = true;
+
+        // Inicialização da página
+        document.addEventListener('DOMContentLoaded', function() {
+            renderAllUsers();
+            renderLogs();
+            loadChat(currentChat);
+            setupEventListeners();
+            simulateActivity();
+            updateStats();
+        });
+
+        // Renderiza todos os usuários (online e offline)
+        function renderAllUsers() {
+            renderUserList('online-users', true);
+            renderUserList('offline-users', false);
+            updateStats();
+        }
+
+        // Renderiza uma lista de usuários (online ou offline)
+        function renderUserList(containerId, online) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            const filteredUsers = users.filter(user => !user.isGroup && user.online === online);
+            
+            if (filteredUsers.length === 0) {
+                const emptyElement = document.createElement('div');
+                emptyElement.className = 'empty-state';
+                emptyElement.innerHTML = `
+                    <div class="empty-state-icon">${online ? '👤' : '😴'}</div>
+                    <div>${online ? 'Nenhum usuário online' : 'Nenhum usuário offline'}</div>
+                `;
+                container.appendChild(emptyElement);
+            } else {
+                filteredUsers.forEach(user => {
+                    const userElement = document.createElement('li');
+                    userElement.className = 'user-item';
+                    if (currentChat == user.id) {
+                        userElement.classList.add('active');
+                    }
+                    userElement.dataset.user = user.id;
+                    userElement.innerHTML = `
+                        <div class="user-avatar" style="background-color: ${getAvatarColor(user.id)}">${user.name.substring(0, 2)}</div>
+                        <div class="user-info">
+                            <div class="user-name">${user.name}</div>
+                            <div class="user-status">
+                                <span class="${user.online ? 'online-badge' : 'offline-badge'}"></span>
+                                ${user.online ? `Conectado às ${user.lastSeen}` : 'Desconectado'}
+                            </div>
+                        </div>
+                    `;
+                    
+                    userElement.addEventListener('click', () => {
+                        document.querySelectorAll('.user-item').forEach(item => {
+                            item.classList.remove('active');
+                        });
+                        userElement.classList.add('active');
+                        loadChat(user.id);
+                    });
+                    
+                    container.appendChild(userElement);
+                });
+            }
+        }
+
+        // Gera cor para avatar baseado no ID
+        function getAvatarColor(id) {
+            const colors = [
+                '#e94560', '#4caf50', '#2196f3', '#ff9800', 
+                '#9c27b0', '#00bcd4', '#8bc34a', '#ff5722',
+                '#607d8b', '#795548'
+            ];
+            return colors[id % colors.length];
+        }
+
+        // Renderiza os logs do sistema
+        function renderLogs() {
+            const logsContainer = document.getElementById('system-logs');
+            logsContainer.innerHTML = '';
+            
+            // Mostra apenas os últimos 8 logs
+            const recentLogs = logs.slice(-8);
+            
+            if (recentLogs.length === 0) {
+                logsContainer.innerHTML = '<div style="color: #666; font-style: italic;">Nenhum log disponível</div>';
+            } else {
+                recentLogs.forEach(log => {
+                    const logElement = document.createElement('div');
+                    logElement.className = 'log-entry';
+                    logElement.innerHTML = `<span class="log-time">[${log.time}]</span> - ${log.message}`;
+                    logsContainer.appendChild(logElement);
+                });
+            }
+            
+            // Rola para o final
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        // Carrega o chat com um usuário/grupo específico
+        function loadChat(chatId) {
+            currentChat = chatId;
+            
+            // Ativa a área de chat
+            document.getElementById('no-chat-selected').classList.add('hidden');
+            document.getElementById('active-chat').classList.remove('hidden');
+            
+            // Define o título do chat
+            let chatTitle, chatSubtitle;
+            
+            if (chatId === 'group') {
+                chatTitle = 'Grupo Geral';
+                chatSubtitle = 'Todos os usuários online podem ver estas mensagens';
+            } else {
+                const user = users.find(u => u.id == chatId);
+                if (user) {
+                    chatTitle = user.name;
+                    chatSubtitle = user.online ? 
+                        `Online - Conectado às ${user.lastSeen}` : 
+                        'Offline - Última vez ' + user.lastSeen;
+                } else {
+                    chatTitle = `Usuário_${chatId}`;
+                    chatSubtitle = 'Usuário não encontrado';
+                }
+            }
+            
+            document.getElementById('chat-with').textContent = chatTitle;
+            document.getElementById('chat-subtitle').textContent = chatSubtitle;
+            
+            // Carrega as mensagens
+            renderMessages(chatId);
+            
+            // Foca no campo de entrada
+            setTimeout(() => {
+                document.getElementById('message-input').focus();
+            }, 100);
+        }
+
+        // Renderiza as mensagens de um chat
+        function renderMessages(chatId) {
+            const messagesContainer = document.getElementById('messages-container');
+            messagesContainer.innerHTML = '';
+            
+            const chatMessages = messages[chatId] || [];
+            
+            if (chatMessages.length === 0) {
+                const emptyElement = document.createElement('div');
+                emptyElement.className = 'empty-state';
+                emptyElement.innerHTML = `
+                    <div class="empty-state-icon">💬</div>
+                    <div>Nenhuma mensagem ainda</div>
+                    <div style="margin-top: 10px; font-size: 14px;">Envie a primeira mensagem!</div>
+                `;
+                messagesContainer.appendChild(emptyElement);
+            } else {
+                chatMessages.forEach(msg => {
+                    const messageElement = document.createElement('div');
+                    
+                    if (msg.isSystem) {
+                        messageElement.className = 'message system';
+                        messageElement.innerHTML = `
+                            <div class="message-bubble">${msg.text}</div>
+                            <div class="message-info">${msg.time}</div>
+                        `;
+                    } else {
+                        messageElement.className = `message ${msg.sender === 'Você' ? 'sent' : 'received'}`;
+                        messageElement.innerHTML = `
+                            <div class="message-bubble">${msg.text}</div>
+                            <div class="message-info">
+                                ${msg.sender} • ${msg.time}
+                            </div>
+                        `;
+                    }
+                    
+                    messagesContainer.appendChild(messageElement);
+                });
+            }
+            
+            // Rola para o final
+            setTimeout(() => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, 50);
+        }
+
+        // Atualiza as estatísticas
+        function updateStats() {
+            const onlineCount = users.filter(u => !u.isGroup && u.online).length;
+            const offlineCount = users.filter(u => !u.isGroup && !u.online).length;
+            const totalUsers = users.filter(u => !u.isGroup).length;
+            
+            document.getElementById('online-count').textContent = onlineCount;
+            document.getElementById('offline-count').textContent = offlineCount;
+            document.getElementById('total-users').textContent = totalUsers;
+            document.getElementById('total-online').textContent = onlineCount;
+        }
+
+        // Configura os event listeners
+        function setupEventListeners() {
+            // Enviar mensagem
+            document.getElementById('send-button').addEventListener('click', sendMessage);
+            document.getElementById('message-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+            
+            // Testar conexão
+            document.getElementById('test-connection').addEventListener('click', function() {
+                addLog('Teste de conexão manual executado');
+                showNotification('Conexão testada com sucesso!', 'success');
+                
+                // Efeito visual no botão
+                this.textContent = 'Testando...';
+                this.disabled = true;
+                
+                setTimeout(() => {
+                    this.textContent = 'Testar Conexão';
+                    this.disabled = false;
+                }, 1500);
+            });
+            
+            // Ver estatísticas
+            document.getElementById('view-stats').addEventListener('click', function() {
+                showNotification('Abrindo painel de estatísticas...', 'info');
+                addLog('Painel de estatísticas aberto');
+            });
+            
+            // Grupo Geral no sidebar
+            document.querySelector('.user-item[data-user="group"]').addEventListener('click', function() {
+                document.querySelectorAll('.user-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                this.classList.add('active');
+                loadChat('group');
+            });
+            
+            // Botão adicionar usuário
+            document.getElementById('add-user-btn').addEventListener('click', openUserModal);
+            document.getElementById('add-first-user-btn').addEventListener('click', openUserModal);
+            
+            // Botões do modal
+            document.getElementById('cancel-user-btn').addEventListener('click', closeUserModal);
+            document.getElementById('save-user-btn').addEventListener('click', saveNewUser);
+            
+            // Toggle de status no modal
+            document.getElementById('status-toggle').addEventListener('click', function() {
+                const toggleSwitch = this.querySelector('.toggle-switch');
+                userStatusOnline = !userStatusOnline;
+                toggleSwitch.classList.toggle('active', userStatusOnline);
+                this.querySelector('span').textContent = userStatusOnline ? 'Online' : 'Offline';
+            });
+            
+            // Botões de ação do chat
+            document.getElementById('chat-info-btn').addEventListener('click', showChatInfo);
+            document.getElementById('clear-chat-btn').addEventListener('click', clearCurrentChat);
+        }
+
+        // Abre o modal para adicionar usuário
+        function openUserModal() {
+            document.getElementById('user-modal').classList.remove('hidden');
+            document.getElementById('new-user-name').value = '';
+            document.getElementById('new-user-id').value = '';
+            userStatusOnline = true;
+            document.getElementById('status-toggle').querySelector('.toggle-switch').classList.add('active');
+            document.getElementById('status-toggle').querySelector('span').textContent = 'Online';
+            
+            // Foca no campo de nome
+            setTimeout(() => {
+                document.getElementById('new-user-name').focus();
+            }, 100);
+        }
+
+        // Fecha o modal
+        function closeUserModal() {
+            document.getElementById('user-modal').classList.add('hidden');
+        }
+
+        // Salva um novo usuário
+        function saveNewUser() {
+            const nameInput = document.getElementById('new-user-name');
+            const idInput = document.getElementById('new-user-id');
+            
+            let userName = nameInput.value.trim();
+            let userId = parseInt(idInput.value);
+            
+            // Validação do nome
+            if (!userName) {
+                showNotification('Por favor, insira um nome para o usuário', 'error');
+                nameInput.focus();
+                return;
+            }
+            
+            // Validação do ID
+            if (idInput.value && (isNaN(userId) || userId < 1 || userId > 999)) {
+                showNotification('ID deve ser um número entre 1 e 999', 'error');
+                idInput.focus();
+                return;
+            }
+            
+            // Gera ID automático se não fornecido
+            if (!idInput.value) {
+                userId = generateUserId();
+            }
+            
+            // Verifica se ID já existe
+            if (users.some(u => u.id === userId)) {
+                showNotification(`ID ${userId} já está em uso. Escolha outro.`, 'error');
+                idInput.focus();
+                return;
+            }
+            
+            // Cria novo usuário
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            
+            const newUser = {
+                id: userId,
+                name: userName,
+                online: userStatusOnline,
+                lastSeen: timeString,
+                isGroup: false
+            };
+            
+            users.push(newUser);
+            
+            // Cria array de mensagens vazio para o novo usuário
+            messages[userId] = [];
+            
+            // Atualiza a interface
+            renderAllUsers();
+            updateStats();
+            closeUserModal();
+            
+            // Adiciona log
+            addLog(`Novo usuário adicionado: ${userName} (ID: ${userId})`);
+            showNotification(`Usuário "${userName}" adicionado com sucesso!`, 'success');
+            
+            // Carrega chat com o novo usuário se estiver online
+            if (userStatusOnline) {
+                setTimeout(() => {
+                    loadChat(userId);
+                    // Ativa o usuário na lista
+                    document.querySelectorAll('.user-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    const userElement = document.querySelector(`.user-item[data-user="${userId}"]`);
+                    if (userElement) {
+                        userElement.classList.add('active');
+                    }
+                }, 300);
+            }
+        }
+
+        // Gera um ID único para usuário
+        function generateUserId() {
+            let newId;
+            do {
+                newId = Math.floor(Math.random() * 900) + 100; // IDs entre 100 e 999
+            } while (users.some(u => u.id === newId));
+            return newId;
+        }
+
+        // Mostra informações do chat atual
+        function showChatInfo() {
+            let infoMessage;
+            
+            if (currentChat === 'group') {
+                const onlineUsers = users.filter(u => !u.isGroup && u.online);
+                infoMessage = `Grupo Geral - ${onlineUsers.length} usuário(s) online\n` +
+                             `Total de mensagens: ${messages['group'] ? messages['group'].length : 0}`;
+            } else {
+                const user = users.find(u => u.id == currentChat);
+                if (user) {
+                    const userMessages = messages[currentChat] || [];
+                    infoMessage = `Usuário: ${user.name}\n` +
+                                 `ID: ${user.id}\n` +
+                                 `Status: ${user.online ? 'Online' : 'Offline'}\n` +
+                                 `Última conexão: ${user.lastSeen}\n` +
+                                 `Total de mensagens: ${userMessages.length}`;
+                } else {
+                    infoMessage = 'Usuário não encontrado';
+                }
+            }
+            
+            showNotification(infoMessage, 'info');
+        }
+
+        // Limpa o chat atual
+        function clearCurrentChat() {
+            if (confirm('Tem certeza que deseja limpar o histórico deste chat?')) {
+                if (currentChat === 'group') {
+                    messages['group'] = [];
+                } else if (messages[currentChat]) {
+                    messages[currentChat] = [];
+                }
+                
+                renderMessages(currentChat);
+                addLog(`Histórico do chat limpo: ${currentChat === 'group' ? 'Grupo Geral' : 'Usuário_' + currentChat}`);
+                showNotification('Histórico do chat limpo com sucesso!', 'success');
+            }
+        }
+
+        // Envia uma mensagem
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const messageText = input.value.trim();
+            
+            if (messageText === '') return;
+            
+            // Verifica se é um chat de usuário válido
+            if (currentChat !== 'group') {
+                const user = users.find(u => u.id == currentChat);
+                if (!user) {
+                    showNotification('Usuário não encontrado', 'error');
+                    return;
+                }
+                
+                if (!user.online) {
+                    showNotification('Este usuário está offline. A mensagem será entregue quando ele se conectar.', 'warning');
+                }
+            }
+            
+            // Adiciona a mensagem ao histórico
+            const now = new Date();
+            const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            
+            if (!messages[currentChat]) {
+                messages[currentChat] = [];
+            }
+            
+            messages[currentChat].push({
+                sender: 'Você',
+                text: messageText,
+                time: timeString,
+                isSystem: false
+            });
+            
+            // Limpa o input e renderiza as mensagens
+            input.value = '';
+            renderMessages(currentChat);
+            
+            // Adiciona log
+            addLog(`Mensagem enviada para ${currentChat === 'group' ? 'Grupo Geral' : 'Usuário_' + currentChat}`);
+            
+            // Efeito visual no botão enviar
+            const sendButton = document.getElementById('send-button');
+            sendButton.textContent = '✓';
+            sendButton.style.backgroundColor = '#4caf50';
+            
+            setTimeout(() => {
+                sendButton.textContent = 'Enviar';
+                sendButton.style.backgroundColor = '#e94560';
+            }, 1000);
+            
+            // Simula resposta (apenas para demonstração)
+            if (currentChat !== 'group' && Math.random() > 0.3) {
+                setTimeout(() => {
+                    const user = users.find(u => u.id == currentChat);
+                    if (user && user.online) {
+                        const responses = [
+                            "Obrigado pela informação!",
+                            "Entendi, vou verificar isso.",
+                            "Pode me enviar mais detalhes?",
+                            "Ótimo, continuamos em contato.",
+                            "Perfeito, isso resolve meu problema!",
+                            "Vou testar e te aviso."
+                        ];
+                        
+                        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                        
+                        messages[currentChat].push({
+                            sender: user.name,
+                            text: randomResponse,
+                            time: `${now.getHours().toString().padStart(2, '0')}:${(now.getMinutes() + 1).toString().padStart(2, '0')}`,
+                            isSystem: false
+                        });
+                        
+                        renderMessages(currentChat);
+                        
+                        // Mostra notificação se não estiver no chat ativo
+                        if (document.hidden || !document.hasFocus()) {
+                            showNotification(`Nova mensagem de ${user.name}`, 'message');
+                        }
+                    }
+                }, 1000 + Math.random() * 3000);
+            }
+        }
+
+        // Adiciona um log ao sistema
+        function addLog(message) {
+            const now = new Date();
+            const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            
+            logs.push({
+                time: timeString,
+                message: message
+            });
+            
+            // Mantém apenas os últimos 20 logs
+            if (logs.length > 20) {
+                logs = logs.slice(-20);
+            }
+            
+            renderLogs();
+        }
+
+        // Mostra uma notificação
+        function showNotification(message, type) {
+            // Implementação básica - pode ser estendida com uma biblioteca de notificações
+            const colors = {
+                'success': '#4caf50',
+                'info': '#2196f3',
+                'warning': '#ff9800',
+                'error': '#f44336',
+                'message': '#e94560'
+            };
+            
+            console.log(`%c[${type.toUpperCase()}] ${message}`, `color: ${colors[type] || '#fff'}; font-weight: bold;`);
+            
+            // Para usuário, mostra alerta
+            if (type === 'error' || type === 'warning') {
+                alert(message);
+            }
+        }
+
+        // Simula atividade no sistema
+        function simulateActivity() {
+            // Atualiza logs periodicamente
+            setInterval(() => {
+                if (Math.random() > 0.7) {
+                    const activities = [
+                        "Recebido: heartbeat",
+                        "Sincronização de dados concluída",
+                        "Verificação de conexão com o banco",
+                        "Atualização de lista de usuários",
+                        "Backup automático executado",
+                        "Cache do sistema limpo"
+                    ];
+                    
+                    const randomActivity = activities[Math.floor(Math.random() * activities.length)];
+                    addLog(randomActivity);
+                }
+            }, 10000);
+            
+            // Simula usuários mudando de status
+            setInterval(() => {
+                users.forEach(user => {
+                    if (!user.isGroup && Math.random() > 0.8) {
+                        const wasOnline = user.online;
+                        user.online = !user.online;
+                        user.lastSeen = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                        
+                        if (wasOnline !== user.online) {
+                            renderAllUsers();
+                            addLog(`${user.name} ${user.online ? 'conectou-se' : 'desconectou-se'}`);
+                            
+                            // Atualiza subtítulo se estiver no chat deste usuário
+                            if (currentChat == user.id) {
+                                loadChat(currentChat);
+                            }
+                        }
+                    }
+                });
+            }, 15000);
+        }
+    </script>
+</body>
+</html>

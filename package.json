@@ -1,0 +1,44 @@
+{
+  "name": "whatsapp-websocket",
+  "version": "1.0.0",
+  "description": "Servidor WebSocket WhatsApp - Sistema de chat em tempo real",
+  "main": "websocket-server.js",
+  "scripts": {
+    "start": "node websocket-server.js",
+    "dev": "nodemon websocket-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "db:reset": "mysql -u root -p < database/schema.sql",
+    "db:seed": "mysql -u root -p chat < database/seed.sql",
+    "lint": "eslint websocket-server.js"
+  },
+  "keywords": [
+    "websocket",
+    "chat",
+    "whatsapp",
+    "realtime",
+    "nodejs"
+  ],
+  "author": "Seu Nome",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/seu-usuario/whatsapp-websocket.git"
+  },
+  "bugs": {
+    "url": "https://github.com/seu-usuario/whatsapp-websocket/issues"
+  },
+  "homepage": "https://github.com/seu-usuario/whatsapp-websocket#readme",
+  "dependencies": {
+    "express": "^4.22.1",
+    "mysql2": "^3.16.2",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.2",
+    "nodemon": "^3.1.11"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
